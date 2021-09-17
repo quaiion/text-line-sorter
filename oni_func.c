@@ -3,10 +3,10 @@
 int num_of_lines (FILE* file_in) {
 
     int i = -1;
-    char temp [100] = "";
+    char temp [line_buffer_size] = "";
     for (i = 0; ! feof (file_in); i++) {
 
-        fgets (temp, 100, file_in);
+        fgets (temp, line_buffer_size, file_in);
     }
 
     rewind (file_in);
@@ -14,14 +14,14 @@ int num_of_lines (FILE* file_in) {
     return i - 1;
 }
 
-char** set_index_tbl (FILE* file_in, int numoflines) {
+char** init_index_tbl (FILE* file_in, int numoflines) {
 
     char** indextbl = (char**) calloc (numoflines, sizeof (char*));
 
-    char line [100] = "";
+    char line [line_buffer_size] = "";
     for (int i = 0; i < numoflines; i++) {
 
-        fgets (line, 100, file_in);
+        fgets (line, line_buffer_size, file_in);
         indextbl[i] = strdup (line);
     }
 
@@ -31,7 +31,7 @@ char** set_index_tbl (FILE* file_in, int numoflines) {
 
 int sort_buffer (char** indextbl, int numoflines) {
 
-    qsort (indextbl, numoflines, sizeof (char*), (int (*) (const void*, const void*)) strcmp);
+    qsort (indextbl, numoflines, sizeof (indextbl[0]), strcmp_comparator);
     return 0;
 }
 
@@ -39,7 +39,6 @@ int print_buffer (FILE* file_out, char** indextbl, int numoflines) {
 
     int i = -1;
     for (i = 0; i < numoflines; i++) {
-
         fputs (indextbl[i], file_out);
     }
     
@@ -55,16 +54,16 @@ void clean_memory (char** charmat, int numoflines) {
     free (charmat);
 }
 
-static int linecompar (const char* line1, const char* line2) {
+static int linecompar (const void* line1, const void* line2) {
 
-    for (int i = 0; line1[i - 1] && line2[i - 1]; i++) {
+    for (int i = 0; (*(const char**) line1)[i - 1] && (*(const char**) line2)[i - 1]; i++) {
 
-        if (symbcompar (line1[i], line2[i]) > 0) {
+        if (symbcompar ((*(const char**) line1)[i], (*(const char**) line2)[i]) > 0) {
 
             return -1;
         } else {
 
-            if (symbcompar (line1[i], line2[i]) < 0) {
+            if (symbcompar ((*(const char**) line1)[i], (*(const char**) line2)[i]) < 0) {
 
                 return 1;
             }
@@ -73,6 +72,12 @@ static int linecompar (const char* line1, const char* line2) {
 
     return 0;
 }
+
+static int strcmp_comparator (const void* line1, const void* line2) {
+
+    return strcmp (*(const char**) line1, *(const char**) line2);
+}
+
 
 static int symbcompar (const char symb1, const char symb2) {
 
