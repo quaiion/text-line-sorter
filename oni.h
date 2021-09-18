@@ -6,22 +6,38 @@
 #include <malloc.h>
 #include <stdlib.h>
 
-const int line_buffer_size = 100;
+struct line_index {
 
-int num_of_lines (FILE* file_in);
+    char* ptr;
+    int linesize;
+};
 
-char** init_index_tbl (FILE* file_in, int numoflines);
+int get_buffer_size (FILE* file_in);
 
-int sort_buffer (char** indextbl, int numoflines);
+char* init_buffer (FILE* file_in, int buffsize);
 
-int print_buffer (FILE* file_out, char** indextbl, int numoflines);
+int get_num_of_lines (char* buffer, int buffsize);
 
-void clean_memory (char** charmat, int numoflines);
+int normalize_buffer (char** buffer, int buffsize);
 
-static int strcmp_comparator (const void* line1, const void* line2);
+line_index* init_index_tbl (char* buffer, int* numoflines);
 
-static int linecompar (const void* line1, const void* line2);
+int sort_text (line_index* indextbl, int numoflines);
 
-static int symbcompar (const char symb1, const char symb2);
+int INDEXprint_text (FILE* file_out, line_index* indextbl, int numoflines);
+
+int BUFFERprint_text (FILE* file_out, char* buffer, int numoflines);
+
+void clean_memory (line_index* tbl, char* buffer);
+
+int strcmp_compar (const void* line1, const void* line2);
+
+int REVline_compar (const line_index line1, const line_index line2);
+
+int line_compar (const void* line1, const void* line2);
+
+int symb_compar (const char symb1, const char symb2);
+
+void merge_sort (void* array, int n, int (*compar) (const void*, const void*));
 
 #endif
