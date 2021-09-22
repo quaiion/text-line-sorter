@@ -1,34 +1,53 @@
-#include "oni.h"            //      Не забудь поменять типы данных на size_t и прописать консты; спроси про правильное объявление статиков
+#include "oni.h"
 
-int get_buffer_size (FILE* file_in) {       //  ++
+size_t get_file_size (FILE* const file_in) {
 
     fseek (file_in, 0, 2);
 
-    int buffsize = (int) ftell (file_in) + 1;
+    size_t filesize = (size_t) ftell (file_in);
 
     rewind (file_in);
-    return buffsize;
+    return filesize;
 }
 
-char* init_buffer (FILE* file_in, int buffsize) {       //  ++
+char* init_buffer (FILE* const file_in, const size_t filesize, size_t* const newbuffsize) {
 
-    char* buffer = (char*) calloc (buffsize, sizeof (char));
+    size_t oldbuffsize = filesize + 1;
+
+    char* buffer = (char*) calloc (oldbuffsize, sizeof (char));
 
     int items_read = -1;
-    items_read = fread (buffer, sizeof (char), buffsize - 1, file_in);
+    items_read = fread (buffer, sizeof (char), filesize, file_in);
     buffer[items_read] = '\0';
+
+    *newbuffsize = items_read + 1;
 
     rewind (file_in);
     return buffer;
 }
 
-int get_num_of_lines (char* buffer, int buffsize) {       //  работает и для нормализованного, и для ненормализованного буфера
+int UNNORMget_num_of_lines (const char* const buffer) {
+
+    int numoflines = 0;
+
+    for (size_t i = 0; buffer[i] != '\0'; i++) {
+
+        if (buffer[i] == '\n') {
+            
+                numoflines++;
+            }
+    }
+
+    return numoflines;
+}
+
+int get_num_of_lines (const char* const buffer, const size_t buffsize) {
 
     int numoflines = 0;
 
     if (strchr (buffer, '\n')) {
 
-        for (int i = 0; i < buffsize; i++) {
+        for (size_t i = 0; i < buffsize - 1; i++) {
 
             if (buffer[i] == '\n') {
             
@@ -37,7 +56,7 @@ int get_num_of_lines (char* buffer, int buffsize) {       //  работает �
         }
     } else {
 
-        for (int i = 0; i < buffsize; i++) {
+        for (size_t i = 0; i < buffsize - 1; i++) {
 
             if (buffer[i] == '\0') {
             
@@ -49,47 +68,56 @@ int get_num_of_lines (char* buffer, int buffsize) {       //  работает �
     return numoflines;
 }
 
-int normalize_buffer (char** buffer, int buffsize) {
+size_t normalize_buffer (char* buffer, const size_t buffsize) {
 
-    int wrpos = 0;
-    char* normbuffer = (char*) calloc (buffsize, sizeof (char));
+    size_t wr_pos = 0, r_pos = 0;
 
-    if (buffer[0] == '\n') {
+    for (int i = 0; i < buffsize; i++) {
 
-        normbuffer[0] = '\0';
-        wrpos++;
+        if (buffer[i] == '\n') {
 
-    } else if (buffer[0] != ' ') {
-
-        normbuffer[0] = buffer[0];
-        wrpos++;
+            buffer[i] = '\0';
+        }
     }
 
-    for (int i = 1; i < buffsize; i++) {
+    if (buffer[r_pos] == ' ') {
 
-        if ((*buffer)[i] = ' ') {
+        for ( ; buffer[r_pos] == ' '; r_pos++) ;
+    }
 
-            if ((*buffer)[i - 1] == '\0' || (*buffer)[i + 1] == '\n' || (*buffer)[i + 1] == ' ' || (*buffer)[i + 1] == '\0') {
+    buffer[wr_pos] = buffer[r_pos];
+    wr_pos++;
+    r_pos++;
 
-                i++;
+    for ( ; r_pos < buffsize; r_pos++, wr_pos++) {
+
+        if (buffer[r_pos] == ' ') {
+
+            if (buffer[r_pos + 1] == '\0') {
+
+                r_pos++;
+
+            } else if (buffer[r_pos - 1] == '\0') {
+
+                for ( ; buffer[r_pos] == ' '; r_pos++) ;
+
+            } else if (buffer[r_pos + 1] == ' ') {
+
+                for ( ; buffer[r_pos + 1] == ' '; r_pos++) ;
+                if (buffer[r_pos + 1] == '\0') {
+
+                    r_pos++;
+                }
             }
-        } else if ((*buffer)[i] == '\n') {
-
-            (*buffer)[i] = '\0';
         }
 
-        normbuffer[wrpos++] = (*buffer)[i];
+        buffer[wr_pos] = buffer[r_pos];
     }
 
-    normbuffer[wrpos] = '\0';
-
-    free (*buffer);
-    *buffer = normbuffer;
-
-    return wrpos;
+    return wr_pos;
 }
 
-line_index* init_index_tbl (char* buffer, int numoflines) {       //  ++
+line_index* init_index_tbl (char* buffer, const int numoflines) {
 
     line_index* indextbl = (line_index*) calloc (numoflines, sizeof (line_index));
 
@@ -97,67 +125,80 @@ line_index* init_index_tbl (char* buffer, int numoflines) {       //  ++
 
     for (int i = 0; i < numoflines; i++) {
 
-        inbuffer_ptrback = strchr (inbuffer_ptrfront, (int) '\n');
+        inbuffer_ptrback = runline (inbuffer_ptrfront);
         indextbl[i].ptr = inbuffer_ptrfront;
 
         indextbl[i].linesize = (int) (inbuffer_ptrback - inbuffer_ptrfront);
 
-        *inbuffer_ptrback = '\0';
-
-        inbuffer_ptrfront = inbuffer_ptrback + 1;
+        inbuffer_ptrfront = ++inbuffer_ptrback;
     }
 
     return indextbl;
 }
 
-int sort_text (line_index* indextbl, int numoflines) {      //  ++
+int sort_text (line_index* const indextbl, const int numoflines) {
 
     qsort (indextbl, numoflines, sizeof (line_index), strcmp_compar);
     return 0;
 }
 
-int INDEXprint_text (FILE* file_out, line_index* indextbl, int numoflines) {     //  ++
+int INDEXprint_text (FILE* const file_out, const line_index* const indextbl, const int numoflines) {
 
-    int lines_read = -1;
-    for (lines_read = 0; lines_read < numoflines; lines_read++) {
+    int lines_read = 0;
 
-        fputs (indextbl[lines_read].ptr, file_out);
-        fputc ('\n', file_out);
-    }
-    
-    return lines_read;
-}
+    if (strchr (indextbl[0].ptr, '\n')) {
 
-int BUFFERprint_text (FILE* file_out, char* buffer, int numoflines) {       //  +         //      Аче можно ли так писать и какие минусы?
+        for ( ; lines_read < numoflines; lines_read++) {
 
-    int lines_read = -1;
+            for (int i = 0; i <= indextbl[lines_read].linesize; i++) {
 
-    for (lines_read = 0; lines_read < numoflines, lines_read++) {
-
-        int inbuffer_ptr
-        for (; *buffer != '\0'; buffer++) {
-
-            fputc ((int) (*buffer), file_out);
+                fputc (indextbl[lines_read].ptr[i], file_out);
+            }
         }
 
-        buffer++;
+    } else {
+
+        for ( ; lines_read < numoflines; lines_read++) {
+
+            fputs (indextbl[lines_read].ptr, file_out);
+            fputc ('\n', file_out);
+        }
     }
 
     return lines_read;
 }
 
-void clean_memory (line_index* tbl, char* buffer) {       //  +
+int BUFFERprint_text (FILE* const file_out, const char* buffer, const int numoflines) {
+
+    int lines_read = -1;
+    const char* inbuffer_ptr = buffer;            //      Нужно ли делать такие штуки для ясности кода? Или параметр переименовать?
+
+    for (lines_read = 0; lines_read < numoflines; lines_read++) {
+
+        for (; *inbuffer_ptr != '\0' && *inbuffer_ptr != '\n'; inbuffer_ptr++) {
+
+            fputc ((int) (*inbuffer_ptr), file_out);
+        }
+        fputc ((int) '\n', file_out);
+
+        inbuffer_ptr++;
+    }
+
+    return lines_read;
+}
+
+void clean_memory (line_index* tbl, char* buffer) {
 
     free (buffer);
     free (tbl);
 }
 
-int strcmp_compar (const void* line1, const void* line2) {       //  +
+int strcmp_compar (const void* line1, const void* line2) {
 
     return strcmp ((*(const line_index*) line1).ptr, (*(const line_index*) line2).ptr);
 }
 
-int REVline_compar (const void* line1, const void* line2) {     //  +
+int REVline_compar (const void* line1, const void* line2) {
 
     if ((*(const line_index*) line1).linesize < (*(const line_index*) line2).linesize) {
 
@@ -212,7 +253,7 @@ int REVline_compar (const void* line1, const void* line2) {     //  +
     }
 }
 
-int line_compar (const void* line1, const void* line2) {        //  +
+int line_compar (const void* line1, const void* line2) {
 
     if ((*(const line_index*) line1).linesize < (*(const line_index*) line2).linesize) {
 
@@ -267,7 +308,7 @@ int line_compar (const void* line1, const void* line2) {        //  +
     }
 }
 
-int symb_compar (const char symb1, const char symb2) {       //  +
+int symb_compar (const char symb1, const char symb2) {
 
     char symb1_reg = symb1, symb2_reg = symb2;
 
@@ -282,58 +323,128 @@ int symb_compar (const char symb1, const char symb2) {       //  +
     return (int) (symb2_reg - symb1_reg);
 }
 
-void merge_sort (void* array, int n, int (*compar) (const void*, const void*)) {
+void merge_sort (void** array, size_t n, int (*compar) (const void*, const void*)) {
 
     if (n == 1) return;
 
-    void *array1, *array2, size1 = n / 2, size2 = n - n / 2;
+    void **array1, **array2;
+    size_t size1 = n / 2, size2 = n - n / 2;
 
-    array1 = (void*) calloc (size1, sizeof (*array1));
-    array2 = (void*) calloc (size2, sizeof (*array2));
+    array1 = (void**) calloc (size1, sizeof (*array1));
+    array2 = (void**) calloc (size2, sizeof (*array2));
 
-    for (int i = 0; i < size1; i++) {
+    for (size_t i = 0; i < size1; i++) {
 
-        array1[i] = array[i];
+        *(array1 + i * sizeof (*array1)) = *(array + i * sizeof (*array));
     }
 
-    for (int i = 0; i < size2; i++) {
+    for (size_t i = 0; i < size2; i++) {
 
-        array2[i] = array[n / 2 + i];
+        *(array2 + i * sizeof (*array2)) = *(array + (n / 2 + i) * sizeof (*array));
     }
 
-    merge_sort (array1, size1);
-    merge_sort (array2, size2);
+    merge_sort (array1, size1, compar);
+    merge_sort (array2, size2, compar);
 
-    int i = 0, j = 0, k = 0;
+    size_t i = 0, j = 0, k = 0;
 
     while (i < size1 && j < size2) {
 
-        if (compar (&(array1[i]), &(array2[j])) < 0) {
+        if (compar (&(*(array1 + i * sizeof (*array1))), &(*(array2 + j * sizeof (*array2)))) < 0) {
 
-            array[k] = array1[i];
+            *(array + k * sizeof (*array)) = *(array1 + i * sizeof (*array1));
             k++;
             i++;
 
         } else {
 
-            array[k] = array2[j];
+            *(array + k * sizeof (*array)) = *(array2 + j * sizeof (*array2));
             k++;
             j++;
         }
     }
 
-    for (; i < size1; i++) {
+    for ( ; i < size1; i++) {
 
-        array[k] = array1[i];
+        *(array + k * sizeof (*array)) = *(array1 + i * sizeof (*array1));
         k++;
     }
 
-    for (; j < size2; j++) {
+    for ( ; j < size2; j++) {
 
-        array[k] = array2[j];
+        *(array + k * sizeof (*array)) = *(array2 + j * sizeof (*array2));
         k++;
     }
 
     free (array1);
     free (array2);
 }
+
+char* runline (char* linestart) {
+
+    char* inline_ptr = linestart;
+
+    for ( ; *inline_ptr != '\0' && *inline_ptr != '\n'; inline_ptr++) ;
+
+    return inline_ptr;
+}
+
+
+// Версия нормализатора, про которую хорошо бы понять, почему она не работает
+
+/*
+
+size_t normalize_buffer (char* buffer, const size_t buffsize) {
+
+    size_t wr_pos = 0, r_pos = 0;
+    int N = 0;
+
+    if (buffer[r_pos] == '\n') {
+
+        buffer[r_pos] = '\0';
+        N++;
+
+    } else if (buffer[r_pos] == ' ') {
+
+        for ( ; buffer[r_pos] == ' '; r_pos++) ;
+    }
+
+    buffer[wr_pos] = buffer[r_pos];
+    wr_pos++;
+    r_pos++;
+
+    for ( ; r_pos < buffsize; r_pos++, wr_pos++) {
+
+        if (buffer[r_pos] == '\n') {
+
+            buffer[r_pos] = '\0';
+            N++;
+
+        } else if (buffer[r_pos] == ' ') {
+
+            if (buffer[r_pos + 1] == '\n' || buffer[r_pos + 1] == '\0') {
+
+                r_pos++;
+
+            } else if (buffer[r_pos - 1] == '\0' || buffer[r_pos - 1] == '\n') {
+
+                for ( ; buffer[r_pos] == ' '; r_pos++) ;
+
+            } else if (buffer[r_pos + 1] == ' ') {
+
+                for ( ; buffer[r_pos + 1] == ' '; r_pos++) ;
+                if (buffer[r_pos + 1] == '\n' || buffer[r_pos + 1] == '\0') {
+
+                    r_pos++;
+                }
+            }
+        }
+
+        buffer[wr_pos] = buffer[r_pos];
+    }
+
+    printf ("\n\nATTENTION: N is %d\n\n", N);
+    return wr_pos;
+}
+
+*/

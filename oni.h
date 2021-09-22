@@ -8,36 +8,40 @@
 
 struct line_index {
 
-    char* ptr;
+    const char* ptr;
     int linesize;
 };
 
-int get_buffer_size (FILE* file_in);
+size_t get_file_size (FILE* const file_in);         //  +
 
-char* init_buffer (FILE* file_in, int buffsize);
+char* init_buffer (FILE* const file_in, const size_t filesize, size_t* buffsize);         //  +
 
-int get_num_of_lines (char* buffer, int buffsize);
+int UNNORMget_num_of_lines (const char* const buffer);          //  +
 
-int normalize_buffer (char** buffer, int buffsize);
+int get_num_of_lines (const char* const buffer, const size_t buffsize);         //  +
 
-line_index* init_index_tbl (char* buffer, int* numoflines);
+size_t normalize_buffer (char* buffer, const size_t buffsize);          //  +
 
-int sort_text (line_index* indextbl, int numoflines);
+line_index* init_index_tbl (char* buffer, const int numoflines);            //  +
 
-int INDEXprint_text (FILE* file_out, line_index* indextbl, int numoflines);
+int sort_text (const line_index* const indextbl, const int numoflines);
 
-int BUFFERprint_text (FILE* file_out, char* buffer, int numoflines);
+int INDEXprint_text (FILE* const file_out, const line_index* const indextbl, const int numoflines);         //  +
 
-void clean_memory (line_index* tbl, char* buffer);
+int BUFFERprint_text (FILE* const file_out, const char* buffer, const int numoflines);          //  +
+
+void clean_memory (line_index* tbl, char* buffer);          //  +
 
 int strcmp_compar (const void* line1, const void* line2);
 
-int REVline_compar (const line_index line1, const line_index line2);
+int REVline_compar (const void* line1, const void* line2);
 
 int line_compar (const void* line1, const void* line2);
 
 int symb_compar (const char symb1, const char symb2);
 
 void merge_sort (void* array, int n, int (*compar) (const void*, const void*));
+
+char* runline (char* linestart);            //  +
 
 #endif
