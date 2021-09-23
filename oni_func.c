@@ -72,7 +72,7 @@ size_t normalize_buffer (char* buffer, const size_t buffsize) {
 
     size_t wr_pos = 0, r_pos = 0;
 
-    for (int i = 0; i < buffsize; i++) {
+    for (size_t i = 0; i < buffsize; i++) {
 
         if (buffer[i] == '\n') {
 
@@ -136,12 +136,6 @@ line_index* init_index_tbl (char* buffer, const int numoflines) {
     return indextbl;
 }
 
-int sort_text (line_index* const indextbl, const int numoflines) {
-
-    qsort (indextbl, numoflines, sizeof (line_index), strcmp_compar);
-    return 0;
-}
-
 int INDEXprint_text (FILE* const file_out, const line_index* const indextbl, const int numoflines) {
 
     int lines_read = 0;
@@ -200,54 +194,37 @@ int strcmp_compar (const void* line1, const void* line2) {
 
 int REVline_compar (const void* line1, const void* line2) {
 
+    int minlinesize = dmin ((*(const line_index*) line1).linesize, (*(const line_index*) line2).linesize);
+
+    for (int i = 0, j = 0; i < minlinesize && j < minlinesize; i++, j++) {
+        
+        for ( ; (*(const line_index*) line1).ptr[(*(const line_index*) line1).linesize - 1 - i] < 'A' && i < minlinesize; i++) ;
+        for ( ; (*(const line_index*) line2).ptr[(*(const line_index*) line2).linesize - 1 - j] < 'A' && j < minlinesize; j++) ;
+
+        if (i == minlinesize || j == minlinesize) {
+
+            break;
+        }
+        
+        if (symb_compar ((*(const line_index*) line1).ptr [(*(const line_index*) line1).linesize - 1 - i], (*(const line_index*) line2).ptr [(*(const line_index*) line2).linesize - 1 - j]) < 0) {
+
+            return -1;
+
+        } else if (symb_compar ((*(const line_index*) line1).ptr [(*(const line_index*) line1).linesize - 1 - i], (*(const line_index*) line2).ptr [(*(const line_index*) line2).linesize - 1 - j]) > 0) {
+
+            return 1;
+        }
+    }
+
     if ((*(const line_index*) line1).linesize < (*(const line_index*) line2).linesize) {
-
-        int minlinesize = (*(const line_index*) line1).linesize;
-        for (int i = 0; i < minlinesize; i++) {
-
-            if (symb_compar ((*(const line_index*) line1).ptr [(*(const line_index*) line1).linesize - 1 - i], (*(const line_index*) line2).ptr [(*(const line_index*) line2).linesize -1 - i]) > 0) {
-
-                return 1;
-
-            } else if (symb_compar ((*(const line_index*) line1).ptr [(*(const line_index*) line1).linesize - 1 - i], (*(const line_index*) line2).ptr [(*(const line_index*) line2).linesize -1 - i]) < 0) {
-
-                return -1;
-            }
-        }
-
-        return 1;
-
-    } else if ((*(const line_index*) line1).linesize > (*(const line_index*) line2).linesize) {
-
-        int minlinesize = (*(const line_index*) line2).linesize;
-        for (int i = 0; i < minlinesize; i++) {
-
-            if (symb_compar ((*(const line_index*) line1).ptr [(*(const line_index*) line1).linesize - 1 - i], (*(const line_index*) line2).ptr [(*(const line_index*) line2).linesize -1 - i]) > 0) {
-
-                return 1;
-
-            } else if (symb_compar ((*(const line_index*) line1).ptr [(*(const line_index*) line1).linesize - 1 - i], (*(const line_index*) line2).ptr [(*(const line_index*) line2).linesize -1 - i]) < 0) {
-
-                return -1;
-            }
-        }
 
         return -1;
 
+    } else if ((*(const line_index*) line1).linesize > (*(const line_index*) line2).linesize) {
+
+        return 1;
+
     } else {
-
-        int minlinesize = (*(const line_index*) line1).linesize;
-        for (int i = 0; i < minlinesize; i++) {
-
-            if (symb_compar ((*(const line_index*) line1).ptr [(*(const line_index*) line1).linesize - 1 - i], (*(const line_index*) line2).ptr [(*(const line_index*) line2).linesize -1 - i]) > 0) {
-
-                return 1;
-
-            } else if (symb_compar ((*(const line_index*) line1).ptr [(*(const line_index*) line1).linesize - 1 - i], (*(const line_index*) line2).ptr [(*(const line_index*) line2).linesize -1 - i]) < 0) {
-
-                return -1;
-            }
-        }
 
         return 0;
     }
@@ -255,54 +232,37 @@ int REVline_compar (const void* line1, const void* line2) {
 
 int line_compar (const void* line1, const void* line2) {
 
+    int minlinesize = dmin ((*(const line_index*) line1).linesize, (*(const line_index*) line2).linesize);
+
+    for (int i = 0, j = 0; i < minlinesize && j < minlinesize; i++, j++) {
+
+        for ( ; (*(const line_index*) line1).ptr[i] < 'A' && i < minlinesize; i++) ;
+        for ( ; (*(const line_index*) line2).ptr[j] < 'A' && j < minlinesize; j++) ;
+
+        if (i == minlinesize || j == minlinesize) {
+
+            break;
+        }
+
+        if (symb_compar ((*(const line_index*) line1).ptr[i], (*(const line_index*) line2).ptr[j]) < 0) {
+
+            return -1;
+
+        } else if (symb_compar ((*(const line_index*) line1).ptr[i], (*(const line_index*) line2).ptr[j]) > 0) {
+
+            return 1;
+        }
+    }
+
     if ((*(const line_index*) line1).linesize < (*(const line_index*) line2).linesize) {
-
-        int minlinesize = (*(const line_index*) line1).linesize;
-        for (int i = 0; i < minlinesize; i++) {
-
-            if (symb_compar ((*(const line_index*) line1).ptr[i], (*(const line_index*) line2).ptr[i]) > 0) {
-
-                return 1;
-
-            } else if (symb_compar ((*(const line_index*) line1).ptr[i], (*(const line_index*) line2).ptr[i]) < 0) {
-
-                return -1;
-            }
-        }
-
-        return 1;
-
-    } else if ((*(const line_index*) line1).linesize > (*(const line_index*) line2).linesize) {
-
-        int minlinesize = (*(const line_index*) line2).linesize;
-        for (int i = 0; i < minlinesize; i++) {
-
-            if (symb_compar ((*(const line_index*) line1).ptr[i], (*(const line_index*) line2).ptr[i]) > 0) {
-
-                return 1;
-
-            } else if (symb_compar ((*(const line_index*) line1).ptr[i], (*(const line_index*) line2).ptr[i]) < 0) {
-
-                return -1;
-            }
-        }
 
         return -1;
 
+    } else if ((*(const line_index*) line1).linesize > (*(const line_index*) line2).linesize) {
+
+        return 1;
+
     } else {
-
-        int minlinesize = (*(const line_index*) line1).linesize;
-        for (int i = 0; i < minlinesize; i++) {
-
-            if (symb_compar ((*(const line_index*) line1).ptr[i], (*(const line_index*) line2).ptr[i]) > 0) {
-
-                return 1;
-
-            } else if (symb_compar ((*(const line_index*) line1).ptr[i], (*(const line_index*) line2).ptr[i]) < 0) {
-
-                return -1;
-            }
-        }
 
         return 0;
     }
@@ -320,15 +280,15 @@ int symb_compar (const char symb1, const char symb2) {
         symb2_reg += ('a' - 'A');
     }
 
-    return (int) (symb2_reg - symb1_reg);
+    return (int) (symb1_reg - symb2_reg);
 }
 
-void merge_sort (void** array, size_t n, int (*compar) (const void*, const void*)) {
+void merge_sort (void** array, size_t numofel, int (*compar) (const void*, const void*)) {
 
-    if (n == 1) return;
+    if (numofel == 1) return;
 
     void **array1, **array2;
-    size_t size1 = n / 2, size2 = n - n / 2;
+    size_t size1 = numofel / 2, size2 = numofel - numofel / 2;
 
     array1 = (void**) calloc (size1, sizeof (*array1));
     array2 = (void**) calloc (size2, sizeof (*array2));
@@ -340,7 +300,7 @@ void merge_sort (void** array, size_t n, int (*compar) (const void*, const void*
 
     for (size_t i = 0; i < size2; i++) {
 
-        *(array2 + i * sizeof (*array2)) = *(array + (n / 2 + i) * sizeof (*array));
+        *(array2 + i * sizeof (*array2)) = *(array + (numofel / 2 + i) * sizeof (*array));
     }
 
     merge_sort (array1, size1, compar);
@@ -387,6 +347,28 @@ char* runline (char* linestart) {
     for ( ; *inline_ptr != '\0' && *inline_ptr != '\n'; inline_ptr++) ;
 
     return inline_ptr;
+}
+
+int dmin (int val1, int val2) {
+
+    if (val1 < val2) {
+
+        return val1;
+    } else {
+
+        return val2;
+    }
+}
+
+int dmax (int val1, int val2) {
+
+    if (val1 > val2) {
+
+        return val1;
+    } else {
+
+        return val2;
+    }
 }
 
 
