@@ -2,7 +2,9 @@
 
 size_t get_file_size (FILE* const file_in) {
 
-    fseek (file_in, 0, 2);
+    assert (file_in);
+
+    fseek (file_in, NO_OFFSET, SEEK_END);
 
     size_t filesize = (size_t) ftell (file_in);
 
@@ -11,6 +13,9 @@ size_t get_file_size (FILE* const file_in) {
 }
 
 char* init_buffer (FILE* const file_in, const size_t filesize, size_t* const newbuffsize) {
+    
+    assert (newbuffsize);
+    assert (file_in);
 
     size_t oldbuffsize = filesize + 1;
 
@@ -26,42 +31,47 @@ char* init_buffer (FILE* const file_in, const size_t filesize, size_t* const new
     return buffer;
 }
 
-int UNNORMget_num_of_lines (const char* const buffer) {
+int UNNORMget_num_of_lines (const char* buffer) {
 
-    int numoflines = 0;
+    assert (buffer);
 
-    for (size_t i = 0; buffer[i] != '\0'; i++) {
+    int numoflines = -1;
 
-        if (buffer[i] == '\n') {
-            
-                numoflines++;
-            }
+    buffer--;
+    for (numoflines = 0; buffer; numoflines++) {
+
+        buffer = strchr (++buffer, (int) '\n');
     }
+
+    numoflines--;
 
     return numoflines;
 }
 
-int get_num_of_lines (const char* const buffer, const size_t buffsize) {
+int get_num_of_lines (char* buffer, const size_t buffsize) {
 
-    int numoflines = 0;
+    assert (buffer);
+
+    int numoflines = -1;
 
     if (strchr (buffer, '\n')) {
 
-        for (size_t i = 0; i < buffsize - 1; i++) {
+        buffer--;
+        for (numoflines = 0; buffer; numoflines++) {
 
-            if (buffer[i] == '\n') {
-            
-                numoflines++;
-            }
+            buffer = strchr (++buffer, (int) '\n');
         }
+
+        numoflines--;
+
     } else {
 
-        for (size_t i = 0; i < buffsize - 1; i++) {
+        char* inbuffer_ptr = buffer - 1;
+        char* buffer_end = buffer + buffsize - 1;
 
-            if (buffer[i] == '\0') {
-            
-                numoflines++;
-            }
+        for (numoflines = 0; ++inbuffer_ptr < buffer_end; numoflines++) {
+
+            inbuffer_ptr = strchr (inbuffer_ptr, (int) '\0');
         }
     }
 
@@ -70,19 +80,20 @@ int get_num_of_lines (const char* const buffer, const size_t buffsize) {
 
 size_t normalize_buffer (char* buffer, const size_t buffsize) {
 
+    assert (buffer);
+
     size_t wr_pos = 0, r_pos = 0;
 
-    for (size_t i = 0; i < buffsize; i++) {
+    char* inbuffer_ptr = strchr (buffer, (int) '\n');
+    while (inbuffer_ptr) {
 
-        if (buffer[i] == '\n') {
-
-            buffer[i] = '\0';
-        }
+        *inbuffer_ptr = '\0';
+        inbuffer_ptr = strchr (++inbuffer_ptr, (int) '\n');
     }
 
-    if (buffer[r_pos] == ' ') {
+    if (isblank ((int) buffer[r_pos])) {
 
-        for ( ; buffer[r_pos] == ' '; r_pos++) ;
+        for ( ; isblank ((int) buffer[r_pos]); r_pos++) ;
     }
 
     buffer[wr_pos] = buffer[r_pos];
@@ -91,7 +102,7 @@ size_t normalize_buffer (char* buffer, const size_t buffsize) {
 
     for ( ; r_pos < buffsize; r_pos++, wr_pos++) {
 
-        if (buffer[r_pos] == ' ') {
+        if (isblank ((int) buffer[r_pos])) {
 
             if (buffer[r_pos + 1] == '\0') {
 
@@ -99,11 +110,11 @@ size_t normalize_buffer (char* buffer, const size_t buffsize) {
 
             } else if (buffer[r_pos - 1] == '\0') {
 
-                for ( ; buffer[r_pos] == ' '; r_pos++) ;
+                for ( ; isblank ((int) buffer[r_pos]); r_pos++) ;
 
-            } else if (buffer[r_pos + 1] == ' ') {
+            } else if (isblank ((int) buffer[r_pos + 1])) {
 
-                for ( ; buffer[r_pos + 1] == ' '; r_pos++) ;
+                for ( ; isblank ((int) buffer[r_pos + 1]); r_pos++) ;
                 if (buffer[r_pos + 1] == '\0') {
 
                     r_pos++;
@@ -118,6 +129,9 @@ size_t normalize_buffer (char* buffer, const size_t buffsize) {
 }
 
 line_index* init_index_tbl (char* buffer, const int numoflines) {
+
+    assert (buffer);
+    assert (numoflines >= 0);
 
     line_index* indextbl = (line_index*) calloc (numoflines, sizeof (line_index));
 
@@ -138,16 +152,17 @@ line_index* init_index_tbl (char* buffer, const int numoflines) {
 
 int INDEXprint_text (FILE* const file_out, const line_index* const indextbl, const int numoflines) {
 
+    assert (numoflines >= 0);
+    assert (indextbl);
+    assert (file_out);
+
     int lines_read = 0;
 
     if (strchr (indextbl[0].ptr, '\n')) {
 
         for ( ; lines_read < numoflines; lines_read++) {
 
-            for (int i = 0; i <= indextbl[lines_read].linesize; i++) {
-
-                fputc (indextbl[lines_read].ptr[i], file_out);
-            }
+            fwrite (indextbl[lines_read].ptr, sizeof (char), indextbl[lines_read].linesize + 1, file_out);
         }
 
     } else {
@@ -162,26 +177,40 @@ int INDEXprint_text (FILE* const file_out, const line_index* const indextbl, con
     return lines_read;
 }
 
-int BUFFERprint_text (FILE* const file_out, const char* buffer, const int numoflines) {
+int BUFFERprint_text (FILE* const file_out, const char* const buffer, const int numoflines) {
+
+    assert (numoflines >= 0);
+    assert (buffer);
+    assert (file_out);
 
     int lines_read = -1;
-    const char* inbuffer_ptr = buffer;            //      Нужно ли делать такие штуки для ясности кода? Или параметр переименовать?
 
-    for (lines_read = 0; lines_read < numoflines; lines_read++) {
+    if (strchr (buffer, '\n')) {
 
-        for (; *inbuffer_ptr != '\0' && *inbuffer_ptr != '\n'; inbuffer_ptr++) {
+        fputs (buffer, file_out);
+        lines_read = UNNORM_BUFF;
 
-            fputc ((int) (*inbuffer_ptr), file_out);
+    } else {
+
+        const char *inbuffer_ptr1 = buffer, *inbuffer_ptr2 = NULL;
+        for (lines_read = 0; lines_read < numoflines; lines_read++) {
+
+            inbuffer_ptr2 = strchr (inbuffer_ptr1, (int) '\0');
+
+            fwrite (inbuffer_ptr1, sizeof (char), (size_t) (inbuffer_ptr2 - inbuffer_ptr1), file_out);
+            fputc ((int) '\n', file_out);
+
+            inbuffer_ptr1 = inbuffer_ptr2 + 1;
         }
-        fputc ((int) '\n', file_out);
-
-        inbuffer_ptr++;
     }
 
     return lines_read;
 }
 
 void clean_memory (line_index* tbl, char* buffer) {
+
+    assert (tbl);
+    assert (buffer);
 
     free (buffer);
     free (tbl);
@@ -194,33 +223,36 @@ int strcmp_compar (const void* line1, const void* line2) {
 
 int REVline_compar (const void* line1, const void* line2) {
 
-    int minlinesize = dmin ((*(const line_index*) line1).linesize, (*(const line_index*) line2).linesize);
+    const char *line1_ptr = (*(const line_index*) line1).ptr, *line2_ptr = (*(const line_index*) line2).ptr;
+    const int line1_size = (*(const line_index*) line1).linesize, line2_size = (*(const line_index*) line2).linesize;
+
+    int minlinesize = dmin (line1_size, line2_size);
 
     for (int i = 0, j = 0; i < minlinesize && j < minlinesize; i++, j++) {
         
-        for ( ; (*(const line_index*) line1).ptr[(*(const line_index*) line1).linesize - 1 - i] < 'A' && i < minlinesize; i++) ;
-        for ( ; (*(const line_index*) line2).ptr[(*(const line_index*) line2).linesize - 1 - j] < 'A' && j < minlinesize; j++) ;
+        for ( ; line1_ptr[line1_size - 1 - i] < 'A' && i < minlinesize; i++) ;
+        for ( ; line2_ptr[line2_size - 1 - j] < 'A' && j < minlinesize; j++) ;
 
         if (i == minlinesize || j == minlinesize) {
 
             break;
         }
-        
-        if (symb_compar ((*(const line_index*) line1).ptr [(*(const line_index*) line1).linesize - 1 - i], (*(const line_index*) line2).ptr [(*(const line_index*) line2).linesize - 1 - j]) < 0) {
+
+        if (symb_compar (line1_ptr[line1_size - 1 - i], line2_ptr[line2_size - 1 - j]) < 0) {
 
             return -1;
 
-        } else if (symb_compar ((*(const line_index*) line1).ptr [(*(const line_index*) line1).linesize - 1 - i], (*(const line_index*) line2).ptr [(*(const line_index*) line2).linesize - 1 - j]) > 0) {
+        } else if (symb_compar (line1_ptr[line1_size - 1 - i], line2_ptr[line2_size - 1 - j]) > 0) {
 
             return 1;
         }
     }
 
-    if ((*(const line_index*) line1).linesize < (*(const line_index*) line2).linesize) {
+    if (line1_size < line2_size) {
 
         return -1;
 
-    } else if ((*(const line_index*) line1).linesize > (*(const line_index*) line2).linesize) {
+    } else if (line1_size > line2_size) {
 
         return 1;
 
@@ -232,33 +264,36 @@ int REVline_compar (const void* line1, const void* line2) {
 
 int line_compar (const void* line1, const void* line2) {
 
-    int minlinesize = dmin ((*(const line_index*) line1).linesize, (*(const line_index*) line2).linesize);
+    const char *line1_ptr = (*(const line_index*) line1).ptr, *line2_ptr = (*(const line_index*) line2).ptr;
+    const int line1_size = (*(const line_index*) line1).linesize, line2_size = (*(const line_index*) line2).linesize;
+
+    int minlinesize = dmin (line1_size, line2_size);
 
     for (int i = 0, j = 0; i < minlinesize && j < minlinesize; i++, j++) {
 
-        for ( ; (*(const line_index*) line1).ptr[i] < 'A' && i < minlinesize; i++) ;
-        for ( ; (*(const line_index*) line2).ptr[j] < 'A' && j < minlinesize; j++) ;
+        for ( ; line1_ptr[i] < 'A' && i < minlinesize; i++) ;
+        for ( ; line2_ptr[j] < 'A' && j < minlinesize; j++) ;
 
         if (i == minlinesize || j == minlinesize) {
 
             break;
         }
 
-        if (symb_compar ((*(const line_index*) line1).ptr[i], (*(const line_index*) line2).ptr[j]) < 0) {
+        if (symb_compar (line1_ptr[i], line2_ptr[j]) < 0) {
 
             return -1;
 
-        } else if (symb_compar ((*(const line_index*) line1).ptr[i], (*(const line_index*) line2).ptr[j]) > 0) {
+        } else if (symb_compar (line1_ptr[i], line2_ptr[j]) > 0) {
 
             return 1;
         }
     }
 
-    if ((*(const line_index*) line1).linesize < (*(const line_index*) line2).linesize) {
+    if (line1_size < line2_size) {
 
         return -1;
 
-    } else if ((*(const line_index*) line1).linesize > (*(const line_index*) line2).linesize) {
+    } else if (line1_size > line2_size) {
 
         return 1;
 
@@ -268,85 +303,104 @@ int line_compar (const void* line1, const void* line2) {
     }
 }
 
-int symb_compar (const char symb1, const char symb2) {
+int symb_compar (char symb1, char symb2) {
 
-    char symb1_reg = symb1, symb2_reg = symb2;
+    symb1 = tolower (symb1);
+    symb2 = tolower (symb2);
 
-    if (symb1 >= 'A' && symb1 <= 'Z') {
-        symb1_reg += ('a' - 'A');
-    }
-
-    if (symb2 >= 'A' && symb2 <= 'Z') {
-        symb2_reg += ('a' - 'A');
-    }
-
-    return (int) (symb1_reg - symb2_reg);
+    return (int) (symb1 - symb2);
 }
 
-void merge_sort (void** array, size_t numofel, int (*compar) (const void*, const void*)) {
+void merge_sort (void* arr, size_t nmemb, const int size, int (*compar) (const void*, const void*)) {
 
-    if (numofel == 1) return;
+    char* array = (char*) arr;
+    char* specarray = (char*) calloc (nmemb, size);
 
-    void **array1, **array2;
-    size_t size1 = numofel / 2, size2 = numofel - numofel / 2;
+    size_t rght = 0, rend = 0;
+    size_t i = 0, j = 0, m = 0;
+ 
+    for (size_t k = 1; k < nmemb; k *= 2) {
 
-    array1 = (void**) calloc (size1, sizeof (*array1));
-    array2 = (void**) calloc (size2, sizeof (*array2));
+        for (size_t left = 0; left + k < nmemb; left += k * 2) {
 
-    for (size_t i = 0; i < size1; i++) {
+            rght = left + k;
+            rend = rght + k;
 
-        *(array1 + i * sizeof (*array1)) = *(array + i * sizeof (*array));
-    }
+            if (rend > nmemb) {
+                rend = nmemb;
+            }
 
-    for (size_t i = 0; i < size2; i++) {
+            m = left;
+            i = left;
+            j = rght;
 
-        *(array2 + i * sizeof (*array2)) = *(array + (numofel / 2 + i) * sizeof (*array));
-    }
+            while (i < rght && j < rend) {
 
-    merge_sort (array1, size1, compar);
-    merge_sort (array2, size2, compar);
+                if (compar (array + i * size, array + j * size) <= 0) {
 
-    size_t i = 0, j = 0, k = 0;
+                    COPY (specarray + m * size, array + i * size, size);
+                    i++;
 
-    while (i < size1 && j < size2) {
+                } else {
 
-        if (compar (&(*(array1 + i * sizeof (*array1))), &(*(array2 + j * sizeof (*array2)))) < 0) {
+                    COPY (specarray + m * size, array + j * size, size);
+                    j++;
+                }
+                m++;
+            }
 
-            *(array + k * sizeof (*array)) = *(array1 + i * sizeof (*array1));
-            k++;
-            i++;
+            while (i < rght) {
 
-        } else {
+                COPY (specarray + m * size, array + i * size, size);
+                i++;
+                m++;
+            }
 
-            *(array + k * sizeof (*array)) = *(array2 + j * sizeof (*array2));
-            k++;
-            j++;
+            while (j < rend) {
+
+                COPY (specarray + m * size, array + j * size, size);
+                j++;
+                m++;
+            }
+
+            for (m = left; m < rend; m++) {
+
+                COPY (array + m * size, specarray + m * size, size);
+            }
         }
     }
 
-    for ( ; i < size1; i++) {
+    free (specarray);
+}
 
-        *(array + k * sizeof (*array)) = *(array1 + i * sizeof (*array1));
-        k++;
+void bubble_sort (void *arr, size_t nmemb, const int size, int (*compar) (const void*, const void*)) {
+
+    char* array = (char*) arr;
+
+    for (size_t i = 0; i < nmemb - 1; i++) {
+
+        for (size_t j = (nmemb - 1); j > i; j--) {
+
+            if (compar (array + (j - 1) * size, array + j * size) > 0) {
+
+                SWAP (array + (j - 1) * size, array + j * size, size);
+            }
+        }
     }
-
-    for ( ; j < size2; j++) {
-
-        *(array + k * sizeof (*array)) = *(array2 + j * sizeof (*array2));
-        k++;
-    }
-
-    free (array1);
-    free (array2);
 }
 
 char* runline (char* linestart) {
 
-    char* inline_ptr = linestart;
+    assert (linestart);
 
-    for ( ; *inline_ptr != '\0' && *inline_ptr != '\n'; inline_ptr++) ;
+    char* lineend = strchr (linestart, (int) '\n');
 
-    return inline_ptr;
+    if (lineend == NULL) {
+
+        lineend = strchr (linestart, (int) '\0');
+    }
+
+    return lineend;
 }
 
 int dmin (int val1, int val2) {
@@ -370,63 +424,3 @@ int dmax (int val1, int val2) {
         return val2;
     }
 }
-
-
-// Версия нормализатора, про которую хорошо бы понять, почему она не работает
-
-/*
-
-size_t normalize_buffer (char* buffer, const size_t buffsize) {
-
-    size_t wr_pos = 0, r_pos = 0;
-    int N = 0;
-
-    if (buffer[r_pos] == '\n') {
-
-        buffer[r_pos] = '\0';
-        N++;
-
-    } else if (buffer[r_pos] == ' ') {
-
-        for ( ; buffer[r_pos] == ' '; r_pos++) ;
-    }
-
-    buffer[wr_pos] = buffer[r_pos];
-    wr_pos++;
-    r_pos++;
-
-    for ( ; r_pos < buffsize; r_pos++, wr_pos++) {
-
-        if (buffer[r_pos] == '\n') {
-
-            buffer[r_pos] = '\0';
-            N++;
-
-        } else if (buffer[r_pos] == ' ') {
-
-            if (buffer[r_pos + 1] == '\n' || buffer[r_pos + 1] == '\0') {
-
-                r_pos++;
-
-            } else if (buffer[r_pos - 1] == '\0' || buffer[r_pos - 1] == '\n') {
-
-                for ( ; buffer[r_pos] == ' '; r_pos++) ;
-
-            } else if (buffer[r_pos + 1] == ' ') {
-
-                for ( ; buffer[r_pos + 1] == ' '; r_pos++) ;
-                if (buffer[r_pos + 1] == '\n' || buffer[r_pos + 1] == '\0') {
-
-                    r_pos++;
-                }
-            }
-        }
-
-        buffer[wr_pos] = buffer[r_pos];
-    }
-
-    printf ("\n\nATTENTION: N is %d\n\n", N);
-    return wr_pos;
-}
-
-*/

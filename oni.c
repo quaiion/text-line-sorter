@@ -15,17 +15,18 @@ int main() {
 
     line_index* indextbl = init_index_tbl (buffer, numoflines);
 
-    qsort (indextbl, numoflines, sizeof (line_index), REVline_compar);
+    merge_sort (indextbl, numoflines, sizeof (line_index), REVline_compar);
 
-    FILE* Bfile_out = fopen ("oni_outputBUF.txt", "w");
-    FILE* Ifile_out = fopen ("oni_outputIND.txt", "w");
+    FILE* file_out = fopen ("oni_output.txt", "w");
 
-    INDEXprint_text (Ifile_out, indextbl, numoflines);
-    BUFFERprint_text (Bfile_out, buffer, numoflines);
+    INDEXprint_text (file_out, indextbl, numoflines);
+    fputc ('\n', file_out);
+    fputc ('\n', file_out);
+    fputc ('\n', file_out);
+    BUFFERprint_text (file_out, buffer, numoflines);
 
     clean_memory (indextbl, buffer);
-    fclose (Bfile_out);
-    fclose (Ifile_out);
+    fclose (file_out);
     fclose (file_in);
     return 0;
 }
