@@ -1,29 +1,33 @@
 #include "oni.h"
 #include <stdio.h>
 
-int main() {
+int main (int argc, char** argv) {
 
-    FILE* file_in = fopen ("oni_input.txt", "r");
+    FILE *file_in = NULL, *file_out = NULL;
+
+    open_in_out_files (&file_in, &file_out, argc, argv);
 
     size_t filesize = get_file_size (file_in);
-    size_t buffsize = 0;
-    char* buffer = init_buffer (file_in, filesize, &buffsize);
 
-    int numoflines = UNNORMget_num_of_lines (buffer);
+    char* buffer = init_buffer (file_in, filesize);
 
-    normalize_buffer (buffer, buffsize);
+    int numoflines = get_num_of_lines (buffer);
 
-    line_index* indextbl = init_index_tbl (buffer, numoflines);
+    normalize_buffer (buffer);
 
-    merge_sort (indextbl, numoflines, sizeof (line_index), REVline_compar);
+    line_index_t* indextbl = init_index_tbl (buffer, numoflines);
 
-    FILE* file_out = fopen ("oni_output.txt", "w");
+    merge_sort (indextbl, numoflines, sizeof (line_index_t), line_compar);
 
     INDEXprint_text (file_out, indextbl, numoflines);
-    fputc ('\n', file_out);
-    fputc ('\n', file_out);
-    fputc ('\n', file_out);
-    BUFFERprint_text (file_out, buffer, numoflines);
+    fputs ("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n", file_out);
+
+    qsort (indextbl, numoflines, sizeof (line_index_t), REVline_compar);
+
+    INDEXprint_text (file_out, indextbl, numoflines);
+    fputs ("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n", file_out);
+
+    BUFFERprint_text (file_out, buffer);
 
     clean_memory (indextbl, buffer);
     fclose (file_out);
