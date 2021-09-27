@@ -96,14 +96,14 @@ line_index_t* init_index_tbl (char* buffer, const int numoflines) {
 
     char *inbuffer_ptrback = NULL, *inbuffer_ptrfront = buffer;
 
-    for (int i = 0; i < numoflines; i++) {
+    for (int i = 0; *inbuffer_ptrfront != '\0'; i++) {
 
         inbuffer_ptrback = strchr (inbuffer_ptrfront, (int) '\n');
         indextbl[i].ptr = inbuffer_ptrfront;
 
         indextbl[i].linesize = (int) (inbuffer_ptrback - inbuffer_ptrfront);
 
-        inbuffer_ptrfront = ++inbuffer_ptrback;
+        inbuffer_ptrfront = inbuffer_ptrback + 1;
     }
 
     return indextbl;
@@ -130,7 +130,14 @@ int BUFFERprint_text (FILE* const file_out, const char* const buffer) {
     assert (buffer);
     assert (file_out);
 
-    return fputs (buffer, file_out);
+    if (fputs (buffer, file_out) >= 0) {
+
+        return TEXT_PRINTED;
+
+    } else {
+
+        return PRINT_FAILED;
+    }
 }
 
 void clean_memory (line_index_t* tbl, char* buffer) {
@@ -363,20 +370,20 @@ int open_in_out_files (FILE** file_in, FILE** file_out, int argc, char** argv) {
         *file_in = fopen ("oni_input.txt", "r");
         *file_out = fopen ("oni_output.txt", "w");
 
-        return (*file_in && *file_out) ? OPENED : FAILED;
+        return (*file_in && *file_out) ? FILE_OPENED_FULL_AUTO : OPEN_FAILED;
 
     } else if (argc == 2) {
 
         *file_in = fopen (argv[1], "r");
         *file_out = fopen ("oni_output.txt", "w");
 
-        return (*file_in && *file_out) ? OPENED : FAILED;
+        return (*file_in && *file_out) ? FILE_OPENED_AUTO_OUTPUT : OPEN_FAILED;
 
     } else {
 
         *file_in = fopen (argv[1], "r");
         *file_out = fopen (argv[2], "w");
 
-        return (*file_in && *file_out) ? OPENED : FAILED;
+        return (*file_in && *file_out) ? FILE_OPENED_MANUALLY : OPEN_FAILED;
     }
 }
