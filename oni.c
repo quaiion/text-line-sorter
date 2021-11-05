@@ -13,8 +13,6 @@ int main (int argc, char** argv) {
 
     int numoflines = get_num_of_lines (buffer);
 
-    normalize_buffer (buffer);
-
     line_index_t* indextbl = init_index_tbl (buffer, numoflines);
 
     merge_sort (indextbl, numoflines, sizeof (line_index_t), line_compar);

@@ -17,10 +17,17 @@ char* init_buffer (FILE* const file_in, const size_t filesize) {
     assert (file_in);
 
     char* buffer = (char*) calloc (filesize + 1, sizeof (char));
+    assert (buffer);
 
     int items_read = -1;
     items_read = fread (buffer, sizeof (char), filesize, file_in);
     buffer[items_read] = '\0';
+
+    if (buffer [items_read - 1] != '\n') {
+
+        printf ("\n\nWorng imput format, please make sure you have placed newline sign at the end of the last line\n\n");
+        exit (EXIT_FAILURE);
+    }
 
     rewind (file_in);
     return buffer;
@@ -43,11 +50,17 @@ int get_num_of_lines (const char* buffer) {
     return numoflines;
 }
 
-size_t normalize_buffer (char* buffer) {
+line_index_t* init_index_tbl (char* buffer, const int numoflines) {
 
     assert (buffer);
+    assert (numoflines >= 0);
 
+    line_index_t* indextbl = (line_index_t*) calloc (numoflines, sizeof (line_index_t));
+    assert (indextbl);
+
+    char *inbuffer_ptrback = NULL, *inbuffer_ptrfront = buffer;
     size_t wr_pos = 0, r_pos = 0;
+    int tbl_cell = 0;
 
     if (isblank ((int) buffer[r_pos])) {
 
@@ -81,18 +94,31 @@ size_t normalize_buffer (char* buffer) {
         }
 
         buffer[wr_pos] = buffer[r_pos];
+
+        if (buffer [wr_pos] == '\n') {
+
+            inbuffer_ptrback = buffer + wr_pos;
+            indextbl[tbl_cell].ptr = inbuffer_ptrfront;
+
+            indextbl[tbl_cell].linesize = (int) (inbuffer_ptrback - inbuffer_ptrfront);
+
+            inbuffer_ptrfront = inbuffer_ptrback + 1;
+            tbl_cell += 1;
+        }
     }
     buffer[wr_pos] = '\0';
 
-    return wr_pos + 1;
+    return indextbl;
 }
 
+/*
 line_index_t* init_index_tbl (char* buffer, const int numoflines) {
 
     assert (buffer);
     assert (numoflines >= 0);
 
     line_index_t* indextbl = (line_index_t*) calloc (numoflines, sizeof (line_index_t));
+    assert (indextbl);
 
     char *inbuffer_ptrback = NULL, *inbuffer_ptrfront = buffer;
 
@@ -108,6 +134,7 @@ line_index_t* init_index_tbl (char* buffer, const int numoflines) {
 
     return indextbl;
 }
+*/
 
 int INDEXprint_text (FILE* const file_out, const line_index_t* const indextbl, const int numoflines) {
 
@@ -119,7 +146,10 @@ int INDEXprint_text (FILE* const file_out, const line_index_t* const indextbl, c
 
     for ( ; lines_written < numoflines; lines_written++) {
 
-        fwrite (indextbl[lines_written].ptr, sizeof (char), indextbl[lines_written].linesize + 1, file_out);
+        if (indextbl[lines_written].linesize != 0) {                        //  Не пробегаем все пустые строки вначале прямиком, т.к. это сильно понизит универсальность функции
+
+            fwrite (indextbl[lines_written].ptr, sizeof (char), indextbl[lines_written].linesize + 1, file_out);
+        }
     }
 
     return lines_written;
@@ -243,6 +273,7 @@ void merge_sort (void* arr, size_t nmemb, const int size, int (*compar) (const v
 
     char* array = (char*) arr;
     char* specarray = (char*) calloc (nmemb, size);
+    assert (specarray);
 
     size_t rght = 0, rend = 0;
     size_t i = 0, j = 0, m = 0;
